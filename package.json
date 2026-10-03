@@ -1,0 +1,16 @@
+{
+  "name": "crew-zero",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/local-server.mjs",
+    "test": "node tests/game.test.mjs",
+    "build": "node scripts/build.mjs",
+    "db:generate": "drizzle-kit generate"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.4",
+    "drizzle-orm": "0.44.5",
+    "esbuild": "0.25.10"
+  }
+}
