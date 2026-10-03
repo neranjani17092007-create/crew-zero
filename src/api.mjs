@@ -4,7 +4,7 @@ export async function api(request,db){
  try{
   if(request.method!=='POST')return json({error:'Use POST.'},405);
   const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'Origin not allowed.'},403);
-  const raw=await request.text();if(raw.length>4096)return json({error:'Request too large.'},413);let input;try{input=JSON.parse(raw)}catch{return json({error:'Invalid request.'},400)}
+  const raw=await request.text();if(raw.length>8192)return json({error:'Request too large.'},413);let input;try{input=JSON.parse(raw)}catch{return json({error:'Invalid request.'},400)}
   const path=new URL(request.url).pathname,now=Date.now();
   if(path==='/api/create'){
    const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';const code=Array.from(crypto.getRandomValues(new Uint8Array(6)),n=>alphabet[n%alphabet.length]).join('');const r=newRoom(code,now);const p=addPlayer(r,input.name,now);
@@ -16,10 +16,13 @@ export async function api(request,db){
   for(let attempt=0;attempt<16;attempt++){
    const row=await db.prepare('SELECT state,revision FROM rooms WHERE code = ? AND expires > ?').bind(input.code,now).first();if(!row)throw new GameError('Room not found or expired.',404);const r=JSON.parse(row.state);let p;
    // A valid heartbeat revives the session before disconnect cleanup, never its eliminated avatar.
-   if(path==='/api/sync'){p=r.players.find(q=>q.token===input.token);if(!p)throw new GameError('Your session has ended. Please join again.',401);p.seen=now;}
+   if(path==='/api/sync'){p=r.players.find(q=>q.token===input.token);if(!p)throw new GameError('Your session has ended. Please join again.',401);if(now-p.seen>=3000)p.seen=now;}
    advance(r,now);
    if(path==='/api/join')p=addPlayer(r,input.name,now);else apply(r,p,input.action,now);
-   const updated=await db.prepare('UPDATE rooms SET state = ?, revision = revision + 1 WHERE code = ? AND revision = ?').bind(JSON.stringify(r),r.code,row.revision).run();
+   // Idle reads only write a heartbeat every three seconds, reducing room contention.
+   const serialized=JSON.stringify(r);
+   if(serialized===row.state)return json({state:view(r,p,now)});
+   const updated=await db.prepare('UPDATE rooms SET state = ?, revision = revision + 1 WHERE code = ? AND revision = ?').bind(serialized,r.code,row.revision).run();
    if(updated.meta.changes)return json({...(path==='/api/join'?{token:p.token}:{}),state:view(r,p,now)});
   }
   throw new GameError('Room is busy. Please retry.',409);

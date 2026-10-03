@@ -1,16 +1,20 @@
-# Crew Zero
+# Global
 
-A browser game for 3–6 players. Create a room, share its six-character code, and have friends open the same game URL and join. The host starts the round. Each round randomly assigns one impostor.
+Play online: https://crew-zero-space-escape.neranjani17092007.chatgpt.site
+
+No installation is required to play. Open the link, create a room, and share the room code with friends.
+
+A browser game for 2–9 players. Create a room, share its six-character code, and have friends open the same game URL and join. The host starts the round. Each round randomly assigns one impostor.
 
 - Crewmates repair four shared systems or vote out the impostor.
-- The impostor wins by reducing the living crew to one or letting the four-minute timer expire.
-- Move with WASD, arrows, or the mobile direction pad. E repairs, R reports. Use the Commons table for one emergency meeting per player.
+- The impostor wins by reducing the living crew to one (zero in a two-player round) or letting the four-minute timer expire.
+- Move with WASD, arrows, or the mobile direction pad. E performs the highlighted nearby action; R reports. Repairs save after the fourth switch. Use the Commons table for one emergency meeting per player.
 - Meetings include text chat, a 12-second discussion period, and voting. Ties skip ejection.
 - Eliminated players spectate. The host can return everyone to the lobby after the round.
 - Refreshing the same tab reconnects its session. Players absent for 30 seconds are removed from the lobby or eliminated from a running round; hosting transfers automatically.
 - Rooms expire after two hours. Share codes only with the people you want to play with. There is no public room directory.
 
-## Run locally
+## Optional local development
 
 Requires Node.js 24+.
 
@@ -28,6 +32,6 @@ npm test
 npm run build
 ```
 
-The hosted Worker uses D1 with a `DB` binding and the versioned Drizzle migrations. It embeds the browser assets, so no asset service is needed. The server validates roles, movement, task proximity, kills, cooldowns, voting eligibility, and host actions. Revision checks prevent concurrent room writes from losing updates. Session tokens are never included in other players' responses. Clients synchronize over HTTP every 180ms; real-world latency can make movement less smooth than dedicated action-game servers.
+The hosted Worker uses D1 with a `DB` binding and the versioned Drizzle migrations. It embeds the browser assets, so no asset service is needed. The server validates roles, movement, task proximity, kills, cooldowns, voting eligibility, and host actions. Revision checks prevent concurrent room writes from losing updates. Session tokens are never included in other players' responses. Movement is predicted immediately on the client, batched with sequence acknowledgments, and reconciled against server-validated positions. Idle polling avoids database writes between heartbeats. Very slow or interrupted connections still delay shared actions.
 
 `public/solo.html` preserves the original solo game. The downloadable `Crew-Zero.html` is that older standalone solo version; multiplayer requires the shared server.
